@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Anypuzzle</title>
+    <style>
+      body {
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        height: 100vh;
+        background-color: #f0e68c;
+        font-family: Arial, sans-serif;
+      }
+      #gameTitle {
+        margin-top: 20px;
+        font-size: 24px;
+        font-weight: bold;
+      }
+      #puzzleContainer {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        grid-gap: 2px;
+        margin-top: 20px;
+        width: 80vw;
+        max-width: 400px;
+        box-sizing: border-box;
+      }
+      .puzzle-piece {
+        width: 100%;
+        padding-top: 100%; /* Aspect ratio 1:1 */
+        border: 1px solid #000;
+        background-size: 400px 400px;
+        cursor: pointer;
+        background-repeat: no-repeat;
+        background-position: center;
+      }
+      #uploadInput,
+      #reshuffleButton,
+      #quitButton {
+        margin-top: 20px;
+      }
+      #previewContainer {
+        margin-top: 20px;
+      }
+      #previewImage {
+        max-width: 100%;
+        max-height: 200px;
+        border: 1px solid #000;
+      }
+      #footer {
+        margin-top: 40px;
+        text-align: center;
+        font-size: 14px;
+        color: #333;
+        width: 80vw;
+        max-width: 400px;
+        box-sizing: border-box;
+      }
+      #description {
+        margin-top: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="gameTitle">Anypuzzle</div>
+    <input type="file" id="uploadInput" accept="image/*" />
+    <button id="reshuffleButton">Reshuffle</button>
+    <button id="quitButton">Quit</button>
+    <div id="puzzleContainer"></div>
+    <div id="previewContainer">
+      <img id="previewImage" src="" alt="Image Preview" />
+    </div>
+    <div id="footer">
+      <div id="description">
+        <p>
+          Welcome to Anypuzzle! Upload an image, and it will be divided into a
+          4x4 grid of pieces. Your task is to rearrange the pieces by dragging
+          and dropping them to complete the puzzle.
+        </p>
+        <p><strong>How the Game Operates:</strong></p>
+        <ul>
+          <li>
+            <strong>Upload Image:</strong> Click the 'Choose File' button to
+            select an image from your device. The image will be used to create
+            the puzzle.
+          </li>
+          <li>
+            <strong>Rearrange Pieces:</strong> Drag and drop the puzzle pieces
+            to their correct positions. Each piece is a part of the full image.
+          </li>
+          <li>
+            <strong>Reshuffle:</strong> Click the 'Reshuffle' button to randomly
+            rearrange the pieces if you need a new challenge.
+          </li>
+          <li>
+            <strong>Complete Puzzle:</strong> When all pieces are in their
+            correct positions, a congratulatory message will appear to let you
+            know that you've completed the puzzle.
+          </li>
+          <li>
+            <strong>Quit:</strong> Click the 'Quit' button to reset the puzzle
+            and clear the uploaded image.
+          </li>
+        </ul>
+      </div>
+      <p>Designed by Nana Kofi Fosu</p>
+    </div>
+    <script>
+      const gridSize = 4;
+      const puzzleContainer = document.getElementById("puzzleContainer");
+      const uploadInput = document.getElementById("uploadInput");
+      const reshuffleButton = document.getElementById("reshuffleButton");
+      const quitButton = document.getElementById("quitButton");
+      const previewImage = document.getElementById("previewImage");
+      let imageSrc = "";
+      let puzzlePieces = [];
+
+      function initializePuzzle(imageSrc) {
+        puzzleContainer.innerHTML = "";
+        puzzlePieces = [];
+
+        for (let i = 0; i < gridSize * gridSize; i++) {
+          const piece = document.createElement("div");
+          piece.classList.add("puzzle-piece");
+          piece.style.backgroundImage = `url(${imageSrc})`;
+          piece.style.backgroundPosition = `-${(i % gridSize) * 100}px -${
+            Math.floor(i / gridSize) * 100
+          }px`;
+          piece.dataset.index = i;
+          piece.draggable = true;
+          puzzlePieces.push(piece);
+        }
+
+        puzzlePieces.sort(() => Math.random() - 0.5);
+        puzzlePieces.forEach((piece) => puzzleContainer.appendChild(piece));
+
+        let draggedPiece = null;
+
+        function handleDragStart(e) {
+          draggedPiece = e.target;
+        }
+
+        function handleDragOver(e) {
+          e.preventDefault();
+        }
+
+        function handleDrop(e) {
+          if (e.target.classList.contains("puzzle-piece")) {
+            const draggedIndex = parseInt(draggedPiece.dataset.index);
+            const targetIndex = parseInt(e.target.dataset.index);
+
+            const draggedPosition = draggedPiece.style.backgroundPosition;
+            draggedPiece.style.backgroundPosition =
+              e.target.style.backgroundPosition;
+            e.target.style.backgroundPosition = draggedPosition;
+
+            const tempIndex = draggedPiece.dataset.index;
+            draggedPiece.dataset.index = e.target.dataset.index;
+            e.target.dataset.index = tempIndex;
+
+            const draggedSibling = puzzlePieces[draggedIndex];
+            const targetSibling = puzzlePieces[targetIndex];
+            puzzleContainer.insertBefore(draggedPiece, targetSibling);
+            puzzleContainer.insertBefore(e.target, draggedSibling);
+
+            if (isPuzzleComplete()) {
+              setTimeout(
+                () => alert("Congratulations! You completed the puzzle!"),
+                100
+              );
+            }
+          }
+        }
+
+        puzzleContainer.addEventListener("dragstart", handleDragStart);
+        puzzleContainer.addEventListener("dragover", handleDragOver);
+        puzzleContainer.addEventListener("drop", handleDrop);
+
+        // Touch event support
+        function handleTouchStart(e) {
+          e.preventDefault();
+          draggedPiece = e.target;
+          draggedPiece.classList.add("dragging");
+        }
+
+        function handleTouchMove(e) {
+          e.preventDefault();
+          if (draggedPiece) {
+            const touch = e.touches[0];
+            const rect = puzzleContainer.getBoundingClientRect();
+            const x = touch.clientX - rect.left;
+            const y = touch.clientY - rect.top;
+            draggedPiece.style.transform = `translate(${x}px, ${y}px)`;
+          }
+        }
+
+        function handleTouchEnd(e) {
+          e.preventDefault();
+          if (draggedPiece) {
+            const touch = e.changedTouches[0];
+            const rect = puzzleContainer.getBoundingClientRect();
+            const x = touch.clientX - rect.left;
+            const y = touch.clientY - rect.top;
+            draggedPiece.style.transform = "none";
+            const droppedPiece = document.elementFromPoint(x, y);
+            if (
+              droppedPiece &&
+              droppedPiece.classList.contains("puzzle-piece")
+            ) {
+              const draggedIndex = parseInt(draggedPiece.dataset.index);
+              const targetIndex = parseInt(droppedPiece.dataset.index);
+
+              const draggedPosition = draggedPiece.style.backgroundPosition;
+              draggedPiece.style.backgroundPosition =
+                droppedPiece.style.backgroundPosition;
+              droppedPiece.style.backgroundPosition = draggedPosition;
+
+              const tempIndex = draggedPiece.dataset.index;
+              draggedPiece.dataset.index = droppedPiece.dataset.index;
+              droppedPiece.dataset.index = tempIndex;
+
+              const draggedSibling = puzzlePieces[draggedIndex];
+              const targetSibling = puzzlePieces[targetIndex];
+              puzzleContainer.insertBefore(draggedPiece, targetSibling);
+              puzzleContainer.insertBefore(droppedPiece, draggedSibling);
+
+              if (isPuzzleComplete()) {
+                setTimeout(
+                  () => alert("Congratulations! You completed the puzzle!"),
+                  100
+                );
+              }
+            }
+            draggedPiece.classList.remove("dragging");
+            draggedPiece = null;
+          }
+        }
+
+        puzzleContainer.addEventListener("touchstart", handleTouchStart);
+        puzzleContainer.addEventListener("touchmove", handleTouchMove);
+        puzzleContainer.addEventListener("touchend", handleTouchEnd);
+      }
+
+      function isPuzzleComplete() {
+        return [...puzzleContainer.children].every(
+          (piece, i) => piece.dataset.index == i
+        );
+      }
+
+      function reshufflePuzzle() {
+        puzzlePieces.sort(() => Math.random() - 0.5);
+        puzzlePieces.forEach((piece) => puzzleContainer.appendChild(piece));
+      }
+
+      function quitPuzzle() {
+        puzzleContainer.innerHTML = "";
+        uploadInput.value = "";
+        previewImage.src = "";
+      }
+
+      uploadInput.addEventListener("change", (e) => {
+        const file = e.target.files[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = (event) => {
+            imageSrc = event.target.result;
+            initializePuzzle(imageSrc);
+            previewImage.src = imageSrc;
+          };
+          reader.readAsDataURL(file);
+        }
+      });
+
+      reshuffleButton.addEventListener("click", reshufflePuzzle);
+      quitButton.addEventListener("click", quitPuzzle);
+    </script>
+  </body>
+</html>
